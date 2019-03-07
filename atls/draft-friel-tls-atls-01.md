@@ -469,30 +469,37 @@ Another typical network deployment is illustrated in {{http-arch}}. It shows a c
 
 # Key Exporting and Application Data Encryption
 
-When solutions implement the architecture described in {{app-architecture-2}}, they leverage {{?RFC5705}} for key exporting from the ATLS session. The client and service then use the exported keys to derive shared encryption keys. The encryption keys are then used with a suitable ciphersuite to encrypt application data for exchange with the peer.
+When solutions implement the architecture described in {{app-architecture-2}}, they leverage {{?RFC5705}} for key exporting from the ATLS session. The client and service then use the exported keys to derive keying material and to populate the OSCORE security context. The encryption keys are then used with a suitable ciphersuite to encrypt application data for exchange with the peer.
 
+The exporter takes three input values:
 
-## Ciphersuite Selection
+- a disambiguating label string,
+- a per-association context value provided by the application using the exporter, and
+- a length value.
 
-Application layer encryption performed outside the context of the ATLS session using exported keys should use the ciphersuite negotiated during ATLS session establishment.
+The label string for use with this specification is defined as 'application-layer-tls'. 
+The per-association context value is empty.   
 
-## Key Derivation
+The length value is twice the size of the key size utilized by the negotiated algorithm since 
+the lower-half is used for the OSCORE Master Secret and the upper-half is used for the OSCORE 
+Master Salt. 
 
-{{?RFC5705}} key exporting functions allow specification of the number of bytes of keying material that should be exported from the TLS session. The application should export the exact number of bytes required to generate the necessary client and server ciphersuite encryption key and IV values.
+For use with OSCORE the following parameters need to be established: 
 
-[[TODO]] Maybe need to reference the relevant sections from https://tools.ietf.org/html/draft-ietf-tls-tls13-23#section-7 and https://tools.ietf.org/html/rfc5246#section-6.3.
+- OSCORE Master Secret: This key is obtained via the TLS exporter, as described above. 
+- OSCORE Sender ID: This value is obtained either via the DTLS CID functionality or determined externally to the ATLS protocol.
+- OSCORE Recipient ID: This value is obtained either via the DTLS CID extension or determined externally to the ATLS protocol.
+- OSCORE AEAD Algorithm: The value for the AEAD algorithm is negotiated during the TLS/DTLS handshake. 
+- OSCORE HMAC Algorithm: The value for the AEAD algorithm is negotiated during the TLS/DTLS handshake. 
+- OSCORE Master Salt: This key is obtained via the TLS exporter, as described above. 
 
-A new TLS Exporter Label is defined for ATLS key exporting. Its value is:
-
-~~~
-TLS Exporter Label: application-layer-tls
-~~~
+A future version of this specification will describe how to establish keying material and parameters for security contexts other than OSCORE. 
 
 # ATLS Session Establishment
 
 {{atls-session}} illustrates how an ATLS session is established using the key exporting architectural model shown in {{app-architecture-2}}. The number of RTTs that take place when establishing a TLS session depends on the version of TLS and what capabilities are enabled on the TLS software stack. For example, a 0-RTT exchange is possible with TLS 1.3. If applications wish to ensure a predictable number of RTTs when establishing an application layer TLS connection, this may be achieved by configuring the TLS software stack appropriately.
 
- The outline is as follows:
+The outline is as follows:
 
 - the client creates an ATLS session object
 - the client initiates a TLS handshake on the session
